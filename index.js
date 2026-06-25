@@ -18,10 +18,10 @@ app.use(express.json());
 // ─────────────────────────────────────────────
 //  ENV — Replace these in Vercel Environment Variables
 // ─────────────────────────────────────────────
-const BOT_TOKEN   = process.env.BOT_TOKEN   || "YOUR_BOT_TOKEN_HERE";
+const BOT_TOKEN   = process.env.BOT_TOKEN   || "8968645006:AAFPeYduJGHgWJTSQ8P23PapOd9jCMTPhDo";
 const MONGO_URI   = process.env.MONGO_URI   || "YOUR_MONGODB_URI_HERE";
 const ADMIN_IDS   = (process.env.ADMIN_IDS  || "").split(",").map(s => s.trim()).filter(Boolean);
-const BASE_URL    = process.env.BASE_URL    || "https://your-vercel-url.vercel.app";
+const BASE_URL    = process.env.BASE_URL    || "bingo-cash.vercel.app";
 const WEBAPP_URL  = process.env.WEBAPP_URL  || `${BASE_URL}/app`;
 
 // ─────────────────────────────────────────────
