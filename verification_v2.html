@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Device Verification</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600;700&display=swap');
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+body{
+  font-family:'Exo 2',sans-serif;
+  background:#050a18;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  position:relative;
+}
+
+/* Stars */
+.stars{position:fixed;inset:0;z-index:0;}
+.star{position:absolute;border-radius:50%;background:#fff;animation:twinkle var(--d) ease-in-out infinite;opacity:0;}
+@keyframes twinkle{0%,100%{opacity:0;}50%{opacity:var(--o);}}
+
+.bg-glow{
+  position:fixed;width:500px;height:500px;
+  background:radial-gradient(circle,rgba(0,120,200,0.18) 0%,transparent 70%);
+  top:50%;left:50%;transform:translate(-50%,-50%);
+  z-index:0;animation:glowPulse 4s ease-in-out infinite;
+}
+@keyframes glowPulse{0%,100%{opacity:.6;}50%{opacity:1;}}
+
+/* ── USER PROFILE (top of card) ── */
+.user-bar{
+  display:none;
+  align-items:center;
+  gap:12px;
+  padding:12px 16px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:14px;
+  margin-bottom:20px;
+  width:100%;
+}
+.user-bar.show{display:flex;}
+.user-avatar{
+  width:44px;height:44px;border-radius:50%;
+  border:2px solid rgba(0,200,180,.4);
+  object-fit:cover;flex-shrink:0;
+  background:rgba(0,200,180,.1);
+}
+.user-avatar-placeholder{
+  width:44px;height:44px;border-radius:50%;
+  border:2px solid rgba(0,200,180,.4);
+  background:rgba(0,200,180,.1);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;font-size:20px;
+}
+.user-info{flex:1;min-width:0;}
+.user-name{font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;color:#e0e0e0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.user-id{font-size:11px;color:rgba(255,255,255,.4);margin-top:2px;}
+
+/* ── MAIN CARD ── */
+.card{
+  position:relative;z-index:10;width:320px;
+  background:rgba(10,20,45,0.90);
+  border:1px solid rgba(0,200,180,0.22);
+  border-radius:24px;padding:32px 24px 28px;
+  text-align:center;
+  box-shadow:0 0 60px rgba(0,150,200,0.12),0 0 0 1px rgba(0,200,180,0.07);
+  backdrop-filter:blur(14px);
+  animation:cardIn .6s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes cardIn{from{opacity:0;transform:translateY(30px) scale(.96);}to{opacity:1;transform:translateY(0) scale(1);}}
+
+/* ── CIRCLE ICON AREA ── */
+.circle-wrap{width:120px;height:120px;margin:0 auto 22px;position:relative;display:flex;align-items:center;justify-content:center;}
+.circle-bg{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(0,200,180,0.12);}
+
+/* Scanning rings */
+.circle-ring{position:absolute;inset:0;border-radius:50%;border:2px solid transparent;border-top-color:#0099cc;border-right-color:#0099cc;animation:spin 1.2s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.circle-ring2{position:absolute;inset:10px;border-radius:50%;border:1px solid transparent;border-bottom-color:rgba(0,180,220,.35);animation:spin 2s linear infinite reverse;}
+
+.circle-inner{
+  width:76px;height:76px;border-radius:50%;
+  background:rgba(0,180,220,.07);
+  border:1.5px solid rgba(0,180,220,.2);
+  display:flex;align-items:center;justify-content:center;
+  position:relative;z-index:2;transition:all .5s;
+}
+.scan-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#0099cc,transparent);top:0;animation:scanMove 2s ease-in-out infinite;z-index:3;border-radius:50%;overflow:hidden;}
+@keyframes scanMove{0%{top:0;opacity:0;}10%{opacity:1;}90%{opacity:1;}100%{top:100%;opacity:0;}}
+
+/* Fingerprint SVG */
+.fp-svg{width:42px;height:42px;position:relative;z-index:2;filter:drop-shadow(0 0 8px rgba(0,180,220,.7));transition:filter .5s,opacity .4s;}
+.fp-svg path,.fp-svg circle{stroke:#0099cc;transition:stroke .5s;}
+
+/* Green tick icon (hidden by default) */
+.tick-icon{
+  display:none;
+  width:52px;height:52px;
+  position:relative;z-index:2;
+  transition:opacity .4s;
+}
+.tick-icon svg{width:100%;height:100%;}
+
+/* Danger icon (hidden by default) */
+.danger-icon{
+  display:none;
+  width:52px;height:52px;
+  position:relative;z-index:2;
+}
+
+/* ── STATE: SCANNING (default) ── */
+/* ── STATE: VERIFIED (green) ── */
+.card.verified .circle-ring{border-top-color:#00c853;border-right-color:#00c853;animation:none;}
+.card.verified .circle-ring2{border-bottom-color:rgba(0,200,83,.3);animation:none;}
+.card.verified .circle-inner{background:rgba(0,200,83,.1);border-color:rgba(0,200,83,.3);}
+.card.verified .scan-line{animation:none;opacity:0;}
+.card.verified .fp-svg{display:none;}
+.card.verified .tick-icon{display:flex;align-items:center;justify-content:center;}
+
+/* ── STATE: ALREADY-VERIFIED (mint green) ── */
+.card.already .circle-ring{border-top-color:#00e5a0;border-right-color:#00e5a0;animation:none;}
+.card.already .circle-ring2{border-bottom-color:rgba(0,229,160,.3);animation:none;}
+.card.already .circle-inner{background:rgba(0,229,160,.1);border-color:rgba(0,229,160,.3);}
+.card.already .scan-line{animation:none;opacity:0;}
+.card.already .fp-svg{display:none;}
+.card.already .tick-icon{display:flex;align-items:center;justify-content:center;}
+
+/* ── STATE: SAME DEVICE (yellow) ── */
+.card.samedev .circle-ring{border-top-color:#ffcc00;border-right-color:#ffcc00;animation:none;}
+.card.samedev .circle-ring2{border-bottom-color:rgba(255,200,0,.3);animation:none;}
+.card.samedev .circle-inner{background:rgba(255,200,0,.08);border-color:rgba(255,200,0,.3);}
+.card.samedev .scan-line{animation:none;opacity:0;}
+.card.samedev .fp-svg{display:none;}
+.card.samedev .danger-icon{display:flex;align-items:center;justify-content:center;}
+
+/* ── STATE: FAILED / ERROR (red) ── */
+.card.failed .circle-ring{border-top-color:#ff3b3b;border-right-color:#ff3b3b;animation:none;}
+.card.failed .circle-ring2{border-bottom-color:rgba(255,59,59,.3);animation:none;}
+.card.failed .circle-inner{background:rgba(255,59,59,.08);border-color:rgba(255,59,59,.3);}
+.card.failed .scan-line{animation:none;opacity:0;}
+.card.failed .fp-svg{display:none;}
+.card.failed .danger-icon{display:flex;align-items:center;justify-content:center;}
+
+/* ── TEXTS ── */
+.verify-title{font-family:'Orbitron',sans-serif;font-size:19px;font-weight:700;color:#0099cc;margin-bottom:6px;letter-spacing:1px;transition:color .4s;}
+.card.verified .verify-title{color:#00c853;}
+.card.already .verify-title{color:#00e5a0;}
+.card.samedev .verify-title{color:#ffcc00;}
+.card.failed .verify-title{color:#ff3b3b;}
+
+.verify-sub{font-size:13px;color:rgba(255,255,255,.45);margin-bottom:4px;line-height:1.6;min-height:18px;transition:color .3s;}
+.card.verified .verify-sub{color:rgba(0,200,83,.8);}
+.card.already .verify-sub{color:rgba(0,229,160,.7);}
+.card.samedev .verify-sub{color:rgba(255,204,0,.7);}
+.card.failed .verify-sub{color:rgba(255,80,80,.75);}
+
+/* Reason row */
+.reason-row{
+  display:none;
+  font-size:11.5px;
+  color:rgba(255,120,120,.75);
+  margin-bottom:18px;
+  padding:8px 12px;
+  background:rgba(255,59,59,.07);
+  border:1px solid rgba(255,59,59,.15);
+  border-radius:9px;
+  text-align:left;
+  line-height:1.5;
+}
+.reason-row.show{display:block;}
+.card.samedev .reason-row{color:rgba(255,220,80,.75);background:rgba(255,200,0,.06);border-color:rgba(255,200,0,.15);}
+.card.already .reason-row{color:rgba(0,229,160,.75);background:rgba(0,229,160,.05);border-color:rgba(0,229,160,.12);}
+
+/* Progress */
+.prog-wrap{width:100%;height:3px;background:rgba(255,255,255,.06);border-radius:2px;margin-bottom:18px;overflow:hidden;}
+.prog-bar{height:100%;background:linear-gradient(90deg,#0099cc,#00e5cc);border-radius:2px;width:0%;transition:width .4s ease;box-shadow:0 0 6px #0099cc;}
+.card.verified .prog-bar,.card.already .prog-bar{background:linear-gradient(90deg,#00c853,#00e5a0);}
+.card.samedev .prog-bar{background:linear-gradient(90deg,#ffaa00,#ffcc00);}
+.card.failed .prog-bar{background:linear-gradient(90deg,#ff3b3b,#ff7070);}
+
+/* Steps */
+.steps-wrap{display:flex;flex-direction:column;gap:7px;margin-bottom:20px;text-align:left;}
+.step{display:flex;align-items:center;gap:10px;padding:9px 11px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.05);border-radius:10px;font-size:11.5px;color:rgba(255,255,255,.35);transition:all .3s;}
+.step.active{border-color:rgba(0,160,220,.3);background:rgba(0,160,220,.06);color:rgba(255,255,255,.8);}
+.step.done{border-color:rgba(0,200,83,.2);background:rgba(0,200,83,.04);color:rgba(255,255,255,.65);}
+.step.fail-step{border-color:rgba(255,59,59,.2);background:rgba(255,59,59,.04);color:rgba(255,255,255,.55);}
+.step-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.12);flex-shrink:0;transition:all .3s;}
+.step.active .step-dot{background:#0099cc;box-shadow:0 0 6px #0099cc;animation:dotPulse 1s infinite;}
+.step.done .step-dot{background:#00c853;box-shadow:0 0 5px #00c853;}
+.step.fail-step .step-dot{background:#ff3b3b;box-shadow:0 0 5px #ff3b3b;}
+@keyframes dotPulse{0%,100%{opacity:1;}50%{opacity:.25;}}
+
+/* ── BUTTONS ── */
+.action-btn{
+  display:none;
+  width:100%;padding:15px;border:none;border-radius:13px;
+  font-family:'Exo 2',sans-serif;font-weight:700;font-size:15px;
+  cursor:pointer;transition:all .25s;
+  align-items:center;justify-content:center;gap:9px;
+  letter-spacing:.5px;
+  animation:btnIn .4s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes btnIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+.action-btn.show{display:flex;}
+
+.btn-green{background:linear-gradient(135deg,#00b845,#00e07a);color:#051a10;box-shadow:0 4px 22px rgba(0,200,80,.28);}
+.btn-green:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,200,80,.4);}
+
+.btn-mint{background:linear-gradient(135deg,#00c896,#00e5c0);color:#021a12;box-shadow:0 4px 22px rgba(0,200,160,.25);}
+.btn-mint:hover{transform:translateY(-2px);}
+
+.btn-red{background:linear-gradient(135deg,#e8001a,#ff4040);color:#fff;box-shadow:0 4px 22px rgba(230,0,26,.28);}
+.btn-red:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(230,0,26,.4);}
+
+.btn-yellow{background:linear-gradient(135deg,#cc8800,#ffcc00);color:#1a1000;box-shadow:0 4px 22px rgba(200,150,0,.25);}
+.btn-yellow:hover{transform:translateY(-2px);}
+
+/* ── FOOTER ── */
+.footer{margin-top:20px;font-size:10.5px;color:rgba(255,255,255,.18);letter-spacing:.8px;line-height:1.9;}
+.footer .brand{color:rgba(0,180,210,.45);font-weight:700;font-family:'Orbitron',sans-serif;font-size:9.5px;}
+.footer a{color:rgba(110,90,255,.5);text-decoration:none;}
+</style>
+</head>
+<body>
+<div class="stars" id="stars"></div>
+<div class="bg-glow"></div>
+
+<div style="position:relative;z-index:10;width:320px;">
+  <!-- User bar (shown when user info loaded) -->
+  <div class="user-bar" id="userBar">
+    <img class="user-avatar" id="userAvatar" src="" alt="" onerror="this.style.display='none';document.getElementById('userAvatarPlaceholder').style.display='flex'"/>
+    <div class="user-avatar-placeholder" id="userAvatarPlaceholder" style="display:none;">👤</div>
+    <div class="user-info">
+      <div class="user-name" id="userName">Loading...</div>
+      <div class="user-id" id="userId">ID: —</div>
+    </div>
+  </div>
+
+  <!-- Main Card -->
+  <div class="card" id="card">
+    <!-- Circle Icon -->
+    <div class="circle-wrap">
+      <div class="circle-bg"></div>
+      <div class="circle-ring"></div>
+      <div class="circle-ring2"></div>
+      <div class="circle-inner" id="circleInner">
+        <div class="scan-line"></div>
+
+        <!-- Fingerprint (scanning) -->
+        <svg class="fp-svg" id="fpSvg" viewBox="0 0 80 80" fill="none">
+          <path d="M40 8C22.3 8 8 22.3 8 40" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M40 8C57.7 8 72 22.3 72 40" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
+          <path d="M16 52C14.7 48.2 14 44.2 14 40C14 25.6 25.6 14 40 14C54.4 14 66 25.6 66 40C66 44 65.3 47.8 64 51.3" stroke-width="2.2" stroke-linecap="round" opacity="0.8"/>
+          <path d="M22 60C19.4 54.2 18 47.8 18 41C18 27.7 28.7 17 42 17" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+          <path d="M40 22C50.5 22 59 30.5 59 41C59 45.5 57.5 49.7 55 53" stroke-width="1.8" stroke-linecap="round" opacity="0.7"/>
+          <path d="M26 65C23.8 61 22.5 56.2 22.5 51C22.5 37.5 31.7 26 44 24" stroke-width="1.8" stroke-linecap="round" opacity="0.6"/>
+          <path d="M40 30C46.6 30 52 35.4 52 42C52 45.5 50.6 48.7 48.3 51" stroke-width="1.6" stroke-linecap="round" opacity="0.6"/>
+          <path d="M31 68C29 64.2 28 59.8 28 55C28 43.4 34 34 40 32" stroke-width="1.6" stroke-linecap="round" opacity="0.5"/>
+          <path d="M40 38C43 38 45.5 40.5 45.5 43.5C45.5 46 44 48.2 41.8 49.3" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+          <path d="M35 70C33.5 66.5 32.5 62.5 32.5 58.2C32.5 50.3 35.5 43.5 40 40" stroke-width="1.4" stroke-linecap="round" opacity="0.5"/>
+          <circle cx="40" cy="40" r="3" fill="#0099cc" opacity="0.9"/>
+        </svg>
+
+        <!-- Green Tick (verified) -->
+        <div class="tick-icon" id="tickIcon">
+          <svg viewBox="0 0 60 60" fill="none">
+            <circle cx="30" cy="30" r="28" stroke="#00c853" stroke-width="2.5" opacity="0.4"/>
+            <polyline points="14,31 25,42 46,20" stroke="#00c853" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 8px #00c853);"/>
+          </svg>
+        </div>
+
+        <!-- Danger / Warning icon (failed / samedev) -->
+        <div class="danger-icon" id="dangerIcon">
+          <svg viewBox="0 0 60 60" fill="none">
+            <path d="M30 8L54 50H6L30 8Z" stroke="#ff3b3b" stroke-width="2.5" stroke-linejoin="round" style="filter:drop-shadow(0 0 8px #ff3b3b);"/>
+            <line x1="30" y1="24" x2="30" y2="37" stroke="#ff3b3b" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="30" cy="44" r="2" fill="#ff3b3b"/>
+          </svg>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="verify-title" id="mainTitle">Verifying Device</div>
+    <div class="verify-sub" id="mainSub">Establishing secure handshake...</div>
+
+    <!-- Reason box (errors / special states) -->
+    <div class="reason-row" id="reasonRow"></div>
+
+    <!-- Progress bar -->
+    <div class="prog-wrap"><div class="prog-bar" id="progBar"></div></div>
+
+    <!-- Steps -->
+    <div class="steps-wrap" id="stepsWrap">
+      <div class="step" id="s1"><div class="step-dot"></div><span>Checking device info</span></div>
+      <div class="step" id="s2"><div class="step-dot"></div><span>Telegram app validation</span></div>
+      <div class="step" id="s3"><div class="step-dot"></div><span>Scanning VPN / Proxy</span></div>
+      <div class="step" id="s4"><div class="step-dot"></div><span>Sending result to server</span></div>
+    </div>
+
+    <!-- Action Button -->
+    <button class="action-btn" id="actionBtn"></button>
+
+    <div class="footer">
+      <div class="brand">POWERED BY RAVI MAKER</div>
+      <div>© 2026 &nbsp;·&nbsp; <a href="https://t.me/TasksWallah" target="_blank">@TasksWallah</a></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Stars ──
+(function(){
+  const w=document.getElementById('stars');
+  for(let i=0;i<80;i++){
+    const s=document.createElement('div');
+    s.className='star';
+    const sz=Math.random()*2.5+0.5;
+    s.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;--d:${(Math.random()*4+2).toFixed(1)}s;--o:${(Math.random()*.7+.1).toFixed(2)};animation-delay:${(Math.random()*5).toFixed(1)}s;`;
+    w.appendChild(s);
+  }
+})();
+
+// ── URL Params ──
+const params   = new URLSearchParams(window.location.search);
+const bottoken = params.get('bottoken') || '';
+const webhook  = params.get('webhook')  || '';
+const hash     = params.get('hash')     || '';
+const chatId   = params.get('chat_id') || params.get('chatid') || '';
+
+// ── DOM refs ──
+const card      = document.getElementById('card');
+const mainTitle = document.getElementById('mainTitle');
+const mainSub   = document.getElementById('mainSub');
+const progBar   = document.getElementById('progBar');
+const actionBtn = document.getElementById('actionBtn');
+const reasonRow = document.getElementById('reasonRow');
+const userBar   = document.getElementById('userBar');
+const userAvatar= document.getElementById('userAvatar');
+const userAvatarPh=document.getElementById('userAvatarPlaceholder');
+const userNameEl= document.getElementById('userName');
+const userIdEl  = document.getElementById('userId');
+const tickIcon  = document.getElementById('tickIcon');
+const dangerIcon= document.getElementById('dangerIcon');
+const fpSvg     = document.getElementById('fpSvg');
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+function setProgress(p){progBar.style.width=p+'%';}
+
+function setStep(n,state){
+  const el=document.getElementById('s'+n);
+  el.classList.remove('active','done','fail-step');
+  if(state==='active')el.classList.add('active');
+  else if(state==='done')el.classList.add('done');
+  else if(state==='fail')el.classList.add('fail-step');
+}
+
+function showReason(msg){
+  reasonRow.textContent=msg;
+  reasonRow.classList.add('show');
+}
+
+// ── BUTTON SETUP ──
+function setupBtn(type, label, action){
+  actionBtn.className='action-btn show';
+  actionBtn.classList.add(type);
+  actionBtn.innerHTML=label;
+  actionBtn.onclick=action;
+}
+
+function returnToBot(){
+  try{
+    if(window.Telegram?.WebApp){
+      window.Telegram.WebApp.close();
+    } else {
+      window.close();
+    }
+  }catch(e){window.close();}
+}
+
+// ── SHOW RESULT STATES ──
+function showResult(type, reason=''){
+  card.classList.remove('verified','already','samedev','failed');
+  actionBtn.className='action-btn';
+  reasonRow.classList.remove('show');
+
+  if(type==='verified'){
+    card.classList.add('verified');
+    mainTitle.textContent='Verification Complete';
+    mainSub.textContent='You Are Now Verified';
+    if(reason) showReason(reason);
+    setupBtn('btn-green','✅ Return To Bot', returnToBot);
+
+  } else if(type==='already'){
+    card.classList.add('already');
+    mainTitle.textContent='Already Verified';
+    mainSub.textContent='You Are Already Verified ✓';
+    if(reason) showReason(reason);
+    setupBtn('btn-mint','↩️ Return To Bot', returnToBot);
+    // Yellow danger turns into mint tick for already
+    dangerIcon.querySelector('path').style.stroke='#ffcc00';
+    dangerIcon.querySelector('line').style.stroke='#ffcc00';
+    dangerIcon.querySelector('circle').style.fill='#ffcc00';
+
+  } else if(type==='samedev'){
+    card.classList.add('samedev');
+    mainTitle.textContent='Same Device Detected';
+    mainSub.textContent='Device Already Registered';
+    showReason('⚠ ' + (reason || 'This device is linked to another account.'));
+    // Yellow danger icon
+    const paths=dangerIcon.querySelectorAll('path,line,circle');
+    paths.forEach(p=>{
+      if(p.tagName==='circle') p.style.fill='#ffcc00';
+      else { p.style.stroke='#ffcc00'; p.style.filter='drop-shadow(0 0 8px #ffcc00)'; }
+    });
+    setupBtn('btn-yellow','↩️ Return To Bot', returnToBot);
+
+  } else if(type==='vpn'){
+    card.classList.add('failed');
+    mainTitle.textContent='Verification Failed';
+    mainSub.textContent='VPN / Proxy Detected';
+    showReason('⚠ Disable your VPN or Proxy and try again.');
+    setupBtn('btn-red','↩️ Return To Bot', returnToBot);
+
+  } else if(type==='clone'){
+    card.classList.add('failed');
+    mainTitle.textContent='App Not Supported';
+    mainSub.textContent='Unofficial Telegram Detected';
+    showReason('⚠ Use official Telegram app from Play Store / App Store.');
+    setupBtn('btn-red','↩️ Return To Bot', returnToBot);
+
+  } else if(type==='hash_error'){
+    card.classList.add('failed');
+    mainTitle.textContent='Hash Error';
+    mainSub.textContent='Invalid Verification Link';
+    showReason('⚠ Hash Error — Link is invalid or expired. Get a new link from the bot.');
+    setupBtn('btn-red','↩️ Return To Bot', returnToBot);
+
+  } else if(type==='bot_info_error'){
+    card.classList.add('failed');
+    mainTitle.textContent='Bot Error';
+    mainSub.textContent='Cannot Reach Bot';
+    showReason('⚠ Not Getting Bot Info — Bot may be offline or token is invalid.');
+    setupBtn('btn-red','↩️ Return To Bot', returnToBot);
+
+  } else if(type==='server_error'){
+    card.classList.add('failed');
+    mainTitle.textContent='Server Error';
+    mainSub.textContent='Connection Failed';
+    showReason('⚠ Server Error — Could not reach the verification server. Try again later.');
+    setupBtn('btn-red','↩️ Return To Bot', returnToBot);
+
+  } else {
+    // Generic failed
+    card.classList.add('failed');
+    mainTitle.textContent='Verification Failed';
+    mainSub.textContent='Could not verify device';
+    showReason('⚠ ' + (reason || 'An unknown error occurred.'));
+    setupBtn('btn-red','↩️ Return To Bot', returnToBot);
+  }
+}
+
+// ── FETCH USER INFO via Bot Token ──
+async function loadUserInfo(){
+  // Try to get user from Telegram WebApp initData
+  const tg = window.Telegram?.WebApp;
+  if(tg && tg.initDataUnsafe?.user){
+    const u = tg.initDataUnsafe.user;
+    userNameEl.textContent = (u.first_name||'') + ' ' + (u.last_name||'');
+    userIdEl.textContent = 'ID: ' + (u.id || '—');
+
+    // Try to get photo via bot API
+    if(bottoken && u.id){
+      try{
+        const r = await fetch(`https://api.telegram.org/bot${bottoken}/getUserProfilePhotos?user_id=${u.id}&limit=1`,{signal:AbortSignal.timeout(5000)});
+        const d = await r.json();
+        if(d.ok && d.result.total_count > 0){
+          const fileId = d.result.photos[0][0].file_id;
+          const r2 = await fetch(`https://api.telegram.org/bot${bottoken}/getFile?file_id=${fileId}`,{signal:AbortSignal.timeout(5000)});
+          const d2 = await r2.json();
+          if(d2.ok){
+            const photoUrl = `https://api.telegram.org/file/bot${bottoken}/${d2.result.file_path}`;
+            userAvatar.src = photoUrl;
+            userAvatar.style.display = 'block';
+            userAvatarPh.style.display = 'none';
+          }
+        }
+      }catch{}
+    }
+    userBar.classList.add('show');
+    return {id: u.id, name: (u.first_name||'')};
+  }
+
+  // Fallback: if hash is a telegram user_id
+  if(hash && /^\d+$/.test(hash) && bottoken){
+    try{
+      const r = await fetch(`https://api.telegram.org/bot${bottoken}/getChat?chat_id=${hash}`,{signal:AbortSignal.timeout(5000)});
+      const d = await r.json();
+      if(d.ok){
+        const u = d.result;
+        userNameEl.textContent = (u.first_name||'') + ' ' + (u.last_name||'');
+        userIdEl.textContent = 'ID: ' + (u.id || hash);
+        userBar.classList.add('show');
+        return {id: u.id, name: u.first_name||''};
+      }
+    }catch{}
+  }
+
+  // Show bar with fallback info if hash present
+  if(hash){
+    userNameEl.textContent = 'User';
+    userIdEl.textContent = 'ID: ' + hash;
+    userBar.classList.add('show');
+  }
+  return {id: hash||null, name:'User'};
+}
+
+// ── ADMIN SETTINGS ──
+function getAdminSettings(){
+  let s={vpn:true,device:true};
+  try{s=JSON.parse(localStorage.getItem('rm_settings'))||s;}catch{}
+  return s;
+}
+function getFailRate(){
+  let fr={global:0};
+  try{fr=JSON.parse(localStorage.getItem('rm_failRates'))||fr;}catch{}
+  if(bottoken && fr['bot_'+bottoken]!==undefined) return fr['bot_'+bottoken];
+  return fr.global||0;
+}
+
+// ── IP / VPN CHECK ──
+async function getIPInfo(){
+  try{
+    const r=await fetch('https://ipapi.co/json/',{signal:AbortSignal.timeout(6000)});
+    return await r.json();
+  }catch{return null;}
+}
+
+// ── TELEGRAM CLONE DETECTION ──
+function detectCloneApp(){
+  const ua=(navigator.userAgent||'').toLowerCase();
+  const cloneSigs=['nicegram','nekogram','bgram','catogram','catagram','forkgram',
+    'plus messenger','plusmessenger','unigram','telegramx','kotatogram',
+    'graphene','exteragram','swiftgram','origram','xtelegram','tgx '];
+  const isCloneUA=cloneSigs.some(s=>ua.includes(s));
+
+  const tg=window.Telegram?.WebApp;
+  let missingCore=false;
+  if(tg){
+    const hasVer=!!tg.version;
+    const hasPlatform=!!tg.platform;
+    const hasInit=typeof tg.initData==='string';
+    missingCore=!(hasVer&&hasPlatform&&hasInit);
+  }
+  return{isClone:isCloneUA||(!!tg&&missingCore),matchedUA:isCloneUA?ua:''};
+}
+
+// ── DEVICE FINGERPRINT ──
+function getDevice(){
+  return{ua:navigator.userAgent,screen:screen.width+'x'+screen.height,tz:Intl.DateTimeFormat().resolvedOptions().timeZone,cores:navigator.hardwareConcurrency||0};
+}
+function deviceFP(d){
+  const raw=d.ua+'|'+d.screen+'|'+d.tz+'|'+d.cores;
+  let h=0;
+  for(let i=0;i<raw.length;i++){h=((h<<5)-h)+raw.charCodeAt(i);h=h&h;}
+  return'dev_'+Math.abs(h).toString(36);
+}
+
+// ── WEBHOOK ──
+async function sendWebhook(status,message,extra={}){
+  if(!webhook)return;
+  try{
+    const url=decodeURIComponent(webhook);
+    await fetch(url,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({status,message,hash,...extra})
+    });
+  }catch{}
+}
+
+// ── BOT REGISTER ──
+async function autoRegisterBot(){
+  if(!bottoken)return;
+  try{
+    let stored=[];
+    try{stored=JSON.parse(localStorage.getItem('rm_bots'))||[];}catch{}
+    const r=await fetch('https://api.telegram.org/bot'+bottoken+'/getMe',{signal:AbortSignal.timeout(5000)});
+    const d=await r.json();
+    if(!d.ok)return;
+    const existing=stored.find(b=>b.token===bottoken);
+    if(existing){
+      existing.name=d.result.first_name||existing.name;
+      existing.username=d.result.username||existing.username;
+      existing.online=true;
+    } else {
+      stored.push({token:bottoken,id:d.result.id,name:d.result.first_name||'Bot',username:d.result.username||'unknown',added:Date.now(),online:true});
+    }
+    localStorage.setItem('rm_bots',JSON.stringify(stored));
+  }catch{}
+}
+
+// ── MAIN VERIFY ──
+async function startVerify(){
+  try{
+    // 0. Basic checks first
+    if(!hash){
+      setProgress(100);
+      showResult('hash_error');
+      return;
+    }
+
+    // Load user info (non-blocking display)
+    loadUserInfo().catch(()=>{});
+    autoRegisterBot().catch(()=>{});
+
+    const settings=getAdminSettings();
+    const failRate=getFailRate();
+    const vpnEnabled=settings.vpn!==false;
+    const deviceEnabled=settings.device!==false;
+
+    // STEP 1 — Device info
+    setStep(1,'active'); setProgress(10);
+    await sleep(700);
+    const device=getDevice();
+    const fp=deviceFP(device);
+    setStep(1,'done'); setProgress(22);
+
+    // STEP 2 — Telegram clone check
+    setStep(2,'active'); setProgress(32);
+    await sleep(600);
+    const cloneCheck=detectCloneApp();
+    if(cloneCheck.isClone){
+      setStep(2,'fail');
+      setStep(3,'fail');setStep(4,'fail');
+      setProgress(45);
+      await sendWebhook('fail','Clone App Detected',{ua:device.ua,matched:cloneCheck.matchedUA,fp});
+      showResult('clone');
+      return;
+    }
+    setStep(2,'done'); setProgress(48);
+
+    // STEP 3 — VPN check
+    setStep(3,'active'); setProgress(55);
+    let ip=null;
+    if(vpnEnabled){
+      ip=await getIPInfo();
+      if(ip){
+        const orgL=(ip.org||'').toLowerCase();
+        const vpnKw=['vpn','proxy','hosting','datacenter','tor','digitalocean','linode','vultr','ovh','hetzner','amazonaws','cloudflare','tunnel'];
+        const isVPN=ip.threat?.is_vpn||ip.threat?.is_proxy||ip.threat?.is_tor||vpnKw.some(k=>orgL.includes(k));
+        if(isVPN){
+          setStep(3,'fail');setStep(4,'fail');
+          setProgress(65);
+          await sendWebhook('fail','VPN Detected',{ip:ip.ip,org:ip.org,fp});
+          showResult('vpn');
+          return;
+        }
+      }
+    }
+    setStep(3,'done'); setProgress(72);
+
+    // STEP 4 — Send to server / check already verified
+    setStep(4,'active'); setProgress(82);
+    await sleep(500);
+
+    // Check if already verified in this browser
+    const HASH_KEY='piro_user_'+hash;
+    const alreadyDone=localStorage.getItem(HASH_KEY);
+    if(alreadyDone==='ok'){
+      setStep(4,'done'); setProgress(100);
+      await sleep(300);
+      await sendWebhook('pass','Already Verified',{ip:ip?.ip,fp,reason:'localStorage hit'});
+      showResult('already');
+      return;
+    }
+
+    // Fail rate
+    if(failRate>0 && Math.floor(Math.random()*100)<failRate){
+      setStep(4,'fail'); setProgress(100);
+      await sendWebhook('fail','Verification Failed by Rate',{ip:ip?.ip,fp});
+      showResult('failed','Random verification failure (rate limit).');
+      return;
+    }
+
+    // Webhook call — check server response for same_device
+    let serverResult=null;
+    if(webhook){
+      try{
+        const url=decodeURIComponent(webhook);
+        const res=await fetch(url,{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({status:'pass',message:'Verified Successfully',hash,ip:ip?.ip,device:device.ua,tz:device.tz,fp,deviceCheckEnabled:deviceEnabled}),
+          signal:AbortSignal.timeout(8000)
+        });
+        if(res.ok){
+          try{ serverResult=await res.json(); }catch{}
+        } else {
+          // HTTP error from server
+          setStep(4,'fail'); setProgress(100);
+          showResult('server_error');
+          return;
+        }
+      }catch(fetchErr){
+        setStep(4,'fail'); setProgress(100);
+        showResult('server_error');
+        return;
+      }
+    }
+
+    // Check if server returned same_device signal
+    if(serverResult?.same_device){
+      setStep(4,'done'); setProgress(100);
+      await sleep(200);
+      showResult('samedev','This device fingerprint is already used by another account.');
+      return;
+    }
+
+    // All good — SUCCESS
+    localStorage.setItem(HASH_KEY,'ok');
+    setStep(4,'done'); setProgress(100);
+    await sleep(300);
+    showResult('verified');
+
+  }catch(err){
+    const msg=err?.message||'Unknown error';
+    if(msg.toLowerCase().includes('bot')||msg.toLowerCase().includes('token')){
+      showResult('bot_info_error');
+    } else if(msg.toLowerCase().includes('network')||msg.toLowerCase().includes('fetch')){
+      showResult('server_error');
+    } else if(msg.toLowerCase().includes('hash')){
+      showResult('hash_error');
+    } else {
+      showResult('failed', msg);
+    }
+    await sendWebhook('fail','Error: '+msg);
+  }
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  setTimeout(startVerify, 500);
+});
+</script>
+</body>
+</html>
